@@ -1,0 +1,109 @@
+
+
+## Measures the time for down- and up-messages for each protocol individually
+## JIRA: https://issues.redhat.com/browse/JGRP-2640
+
+
+RULE DiagnosticHandler creation
+CLASS DiagnosticsHandler
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD <init>
+AT EXIT
+BIND diag=$this
+IF TRUE
+   DO diagCreated(diag);
+ENDRULE
+
+
+RULE Down JChannel - add header
+CLASS JChannel
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD down(Message)
+AT ENTRY
+BIND msg=$1
+IF TRUE
+   DO addHeader(msg);
+ENDRULE
+
+##
+## If they're is an up_prot, compute the time for it from the header, then set the current time in the header
+##
+RULE down(Message)
+CLASS ^Protocol
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD down(Message)
+AT ENTRY
+BIND msg=$1, prot=$0;
+IF TRUE
+   DO downTime(msg, prot);
+ENDRULE
+
+
+
+RULE Down Transport
+CLASS ^TP
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD down(Message)
+AFTER READ loopback_separate_thread
+BIND msg=$1, cl=$this.getClass();
+IF TRUE
+   DO computeDownStartTime(msg, cl);
+ENDRULE
+
+
+RULE Handle single message - add header
+INTERFACE MessageProcessingPolicy
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD process(Message,boolean)
+AT ENTRY
+BIND msg=$1;
+IF TRUE
+   DO addHeader(msg);
+ENDRULE
+
+RULE Handle message batch - add headers to all messages
+INTERFACE MessageProcessingPolicy
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD process(MessageBatch,boolean)
+AT ENTRY
+BIND batch=$1;
+IF TRUE
+   DO addHeader(batch);
+ENDRULE
+
+RULE Loopback - add header
+INTERFACE MessageProcessingPolicy
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD loopback
+AT ENTRY
+BIND msg=$1;
+IF TRUE
+   DO addHeader(msg);
+ENDRULE
+
+
+RULE up(Message)
+CLASS ^Protocol
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD up(Message)
+AT ENTRY
+BIND msg=$1, prot=$0;
+IF TRUE
+   DO upTime(msg, prot);
+ENDRULE
+
+
+
+RULE up(MessageBatch)
+CLASS ^Protocol
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD up(MessageBatch)
+AT ENTRY
+BIND batch=$1, prot=$0;
+IF TRUE
+   DO upTime(batch, prot);
+ENDRULE
+
+
+
+
