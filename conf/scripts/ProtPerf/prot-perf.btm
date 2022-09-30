@@ -21,7 +21,7 @@ CLASS ^Protocol
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
 METHOD down(Message)
 AT ENTRY
-BIND msg=$1, prot=$0;
+BIND msg=$1, prot=$this.getUpProtocol();
 IF TRUE
    DO downTime(msg, prot);
 ENDRULE
@@ -33,9 +33,9 @@ CLASS ^TP
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
 METHOD down(Message)
 AT EXIT
-BIND msg=$1, cl=$this.getClass();
+BIND msg=$1, prot=$this;
 IF TRUE
-   DO computeDownStartTime(msg, cl);
+   DO downTime(msg, prot);
 ENDRULE
 
 
@@ -44,7 +44,7 @@ CLASS ^TP
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
 METHOD loopback
 AT ENTRY
-BIND msg=$1, prot=$this;
+BIND msg=$1, prot=$this.getDownProtocol();
 IF TRUE
    DO upTime(msg, prot);
 ENDRULE
@@ -75,7 +75,7 @@ CLASS ^Protocol
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
 METHOD up(Message)
 AT ENTRY
-BIND msg=$1, prot=$this;
+BIND msg=$1, prot=$this.getDownProtocol();
 IF TRUE
    DO upTime(msg, prot);
 ENDRULE
@@ -87,7 +87,7 @@ CLASS ^Protocol
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
 METHOD up(MessageBatch)
 AT ENTRY
-BIND batch=$1, prot=$0;
+BIND batch=$1, prot=$this.getDownProtocol();
 IF TRUE
    DO upTime(batch, prot);
 ENDRULE

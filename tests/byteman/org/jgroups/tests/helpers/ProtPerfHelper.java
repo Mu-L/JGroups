@@ -39,12 +39,11 @@ public class ProtPerfHelper extends Helper {
 
 
     @SuppressWarnings("MethodMayBeStatic")
-    public void downTime(Message msg, Protocol p) {
+    public void downTime(Message msg, Protocol prot) {
         ProtPerfHeader hdr=getOrAddHeader(msg);
-        Protocol up_prot=p.getUpProtocol();
-        if(up_prot != null && hdr.startDown() > 0) {
+        if(prot != null && hdr.startDown() > 0) {
             long time=(System.nanoTime() - hdr.startDown()) / 1000; // us
-            ph.add(up_prot.getClass(), time, true);
+            ph.add(prot.getClass(), time, true);
         }
         hdr.startDown(System.nanoTime());
     }
@@ -52,35 +51,23 @@ public class ProtPerfHelper extends Helper {
 
 
     @SuppressWarnings("MethodMayBeStatic")
-    public void computeDownStartTime(Message msg, Class<? extends Protocol> cl) {
+    public void upTime(Message msg, Protocol prot) {
         ProtPerfHeader hdr=getOrAddHeader(msg);
-        if(hdr.startDown() > 0) {
-            long time=(System.nanoTime() - hdr.startDown()) / 1000;
-            hdr.startDown(0);
-            ph.add(cl, time, true);
-        }
-    }
-
-    @SuppressWarnings("MethodMayBeStatic")
-    public void upTime(Message msg, Protocol p) {
-        ProtPerfHeader hdr=getOrAddHeader(msg);
-        Protocol down_prot=p.getDownProtocol();
-        if(down_prot != null && hdr.startUp() > 0) {
+        if(prot != null && hdr.startUp() > 0) {
             long time=(System.nanoTime() - hdr.startUp()) / 1000; // us
-            ph.add(down_prot.getClass(), time, false);
+            ph.add(prot.getClass(), time, false);
         }
         hdr.startUp(System.nanoTime());
     }
 
 
     @SuppressWarnings("MethodMayBeStatic")
-    public void upTime(MessageBatch batch, Protocol p) {
-        Protocol down_prot=p.getDownProtocol();
+    public void upTime(MessageBatch batch, Protocol prot) {
         for(Message msg: batch) {
             ProtPerfHeader hdr=getOrAddHeader(msg);
-            if(down_prot != null && hdr.startUp() > 0) {
+            if(prot != null && hdr.startUp() > 0) {
                 long time=(System.nanoTime() - hdr.startUp()) / 1000; // us
-                ph.add(down_prot.getClass(), time, false);
+                ph.add(prot.getClass(), time, false);
             }
             hdr.startUp(System.nanoTime());
         }
