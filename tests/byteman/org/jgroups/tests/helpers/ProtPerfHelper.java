@@ -39,22 +39,8 @@ public class ProtPerfHelper extends Helper {
 
 
     @SuppressWarnings("MethodMayBeStatic")
-    public void addHeader(Message msg) {
-        msg.putHeader(ID, new ProtPerfHeader());
-    }
-
-    @SuppressWarnings("MethodMayBeStatic")
-    public void addHeader(MessageBatch batch) {
-        for(Message msg: batch)
-            msg.putHeader(ID, new ProtPerfHeader());
-    }
-
-
-    @SuppressWarnings("MethodMayBeStatic")
     public void downTime(Message msg, Protocol p) {
-        ProtPerfHeader hdr=msg.getHeader(ID);
-        if(hdr == null)
-            return;
+        ProtPerfHeader hdr=getOrAddHeader(msg);
         Protocol up_prot=p.getUpProtocol();
         if(up_prot != null && hdr.startDown() > 0) {
             long time=(System.nanoTime() - hdr.startDown()) / 1000; // us
@@ -66,22 +52,18 @@ public class ProtPerfHelper extends Helper {
 
 
     @SuppressWarnings("MethodMayBeStatic")
-    public long computeDownStartTime(Message msg, Class<? extends Protocol> cl) {
-        ProtPerfHeader hdr=msg.getHeader(ID);
-        if(hdr != null && hdr.startDown() > 0) {
+    public void computeDownStartTime(Message msg, Class<? extends Protocol> cl) {
+        ProtPerfHeader hdr=getOrAddHeader(msg);
+        if(hdr.startDown() > 0) {
             long time=(System.nanoTime() - hdr.startDown()) / 1000;
             hdr.startDown(0);
             ph.add(cl, time, true);
-            return time;
         }
-        return 0;
     }
 
     @SuppressWarnings("MethodMayBeStatic")
     public void upTime(Message msg, Protocol p) {
-        ProtPerfHeader hdr=msg.getHeader(ID);
-        if(hdr == null)
-            return;
+        ProtPerfHeader hdr=getOrAddHeader(msg);
         Protocol down_prot=p.getDownProtocol();
         if(down_prot != null && hdr.startUp() > 0) {
             long time=(System.nanoTime() - hdr.startUp()) / 1000; // us
@@ -95,10 +77,7 @@ public class ProtPerfHelper extends Helper {
     public void upTime(MessageBatch batch, Protocol p) {
         Protocol down_prot=p.getDownProtocol();
         for(Message msg: batch) {
-            ProtPerfHeader hdr=msg.getHeader(ID);
-            if(hdr == null)
-                continue;
-
+            ProtPerfHeader hdr=getOrAddHeader(msg);
             if(down_prot != null && hdr.startUp() > 0) {
                 long time=(System.nanoTime() - hdr.startUp()) / 1000; // us
                 ph.add(down_prot.getClass(), time, false);
@@ -108,7 +87,13 @@ public class ProtPerfHelper extends Helper {
     }
 
 
-
+    protected static ProtPerfHeader getOrAddHeader(Message msg) {
+        ProtPerfHeader hdr=msg.getHeader(ID);
+        if(hdr != null)
+            return hdr;
+        msg.putHeader(ID, hdr=new ProtPerfHeader());
+        return hdr;
+    }
 
 
     protected static class ProtPerfProbeHandler implements DiagnosticsHandler.ProbeHandler {
@@ -155,8 +140,8 @@ public class ProtPerfHelper extends Helper {
             return new String[]{"perf", "perf-down", "perf-up", "perf-down-detailed", "perf-up-detailed", "perf-reset"};
         }
 
-        protected void add(Class<? extends Protocol> p, long value, boolean down) {
-            Entry e=map.computeIfAbsent(p, cl -> new Entry());
+        protected void add(Class<? extends Protocol> clazz, long value, boolean down) {
+            Entry e=map.computeIfAbsent(clazz, cl -> new Entry());
             e.add(value, down);
         }
 

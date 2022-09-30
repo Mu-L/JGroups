@@ -15,19 +15,7 @@ IF TRUE
 ENDRULE
 
 
-RULE Down JChannel - add header
-CLASS JChannel
-HELPER org.jgroups.tests.helpers.ProtPerfHelper
-METHOD down(Message)
-AT ENTRY
-BIND msg=$1
-IF TRUE
-   DO addHeader(msg);
-ENDRULE
-
-##
 ## If they're is an up_prot, compute the time for it from the header, then set the current time in the header
-##
 RULE down(Message)
 CLASS ^Protocol
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
@@ -40,45 +28,45 @@ ENDRULE
 
 
 
-RULE Down Transport
+RULE down(Message) completed in TP
 CLASS ^TP
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
 METHOD down(Message)
-AFTER READ loopback_separate_thread
+AT EXIT
 BIND msg=$1, cl=$this.getClass();
 IF TRUE
    DO computeDownStartTime(msg, cl);
 ENDRULE
 
 
-RULE Handle single message - add header
-INTERFACE MessageProcessingPolicy
-HELPER org.jgroups.tests.helpers.ProtPerfHelper
-METHOD process(Message,boolean)
-AT ENTRY
-BIND msg=$1;
-IF TRUE
-   DO addHeader(msg);
-ENDRULE
-
-RULE Handle message batch - add headers to all messages
-INTERFACE MessageProcessingPolicy
-HELPER org.jgroups.tests.helpers.ProtPerfHelper
-METHOD process(MessageBatch,boolean)
-AT ENTRY
-BIND batch=$1;
-IF TRUE
-   DO addHeader(batch);
-ENDRULE
-
-RULE Loopback - add header
-INTERFACE MessageProcessingPolicy
+RULE TP: set up-time for a looped-back message
+CLASS ^TP
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
 METHOD loopback
 AT ENTRY
-BIND msg=$1;
+BIND msg=$1, prot=$this;
 IF TRUE
-   DO addHeader(msg);
+   DO upTime(msg, prot);
+ENDRULE
+
+RULE TP: set up-time for a single message
+CLASS ^SubmitToThreadPool
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD process(Message,boolean)
+AT ENTRY
+BIND msg=$1, prot=$this.getTransport();
+IF TRUE
+   DO upTime(msg, prot);
+ENDRULE
+
+RULE TP: set up-time for a message batch
+CLASS ^SubmitToThreadPool
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD process(MessageBatch,boolean)
+AT ENTRY
+BIND batch=$1, prot=$this.getTransport();
+IF TRUE
+   DO upTime(batch, prot);
 ENDRULE
 
 
@@ -87,7 +75,7 @@ CLASS ^Protocol
 HELPER org.jgroups.tests.helpers.ProtPerfHelper
 METHOD up(Message)
 AT ENTRY
-BIND msg=$1, prot=$0;
+BIND msg=$1, prot=$this;
 IF TRUE
    DO upTime(msg, prot);
 ENDRULE
@@ -105,5 +93,23 @@ IF TRUE
 ENDRULE
 
 
+RULE ProtocolStack.up(Message)
+CLASS ProtocolStack
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD up(Message)
+AT EXIT
+BIND msg=$1, prot=$this;
+IF TRUE
+   DO upTime(msg, prot);
+ENDRULE
 
 
+RULE ProtocolStack.up(MessageBatch)
+CLASS ProtocolStack
+HELPER org.jgroups.tests.helpers.ProtPerfHelper
+METHOD up(MessageBatch)
+AT EXIT
+BIND batch=$1, prot=$this;
+IF TRUE
+   DO upTime(batch, prot);
+ENDRULE
